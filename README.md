@@ -1,6 +1,6 @@
 # Text Splitter
 
-A simple, lightweight application for splitting large text into smaller chunks of a specified maximum length, while intelligently preserving paragraph or word boundaries.
+I got frustrated that every text splitters online seemed to lose all of my formatting when I was writing big sections of my stories in a text editor.  Hard to keep my character count to 2000 sometimes.  So I created this. A simple, lightweight application for splitting large text into smaller chunks of a specified maximum length, while intelligently preserving paragraph or word boundaries.
 
 ## What is Text Splitter?
 
