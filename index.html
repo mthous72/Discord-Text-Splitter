@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Text Splitter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .input-section, .output-section {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .option-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 200px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            padding: 10px;
+            font-size: 16px;
+            resize: vertical;
+        }
+        .char-count {
+            font-size: 14px;
+            color: #666;
+            margin-top: 5px;
+            text-align: right;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        .segment {
+            border: 1px solid #eee;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: white;
+            position: relative;
+        }
+        .segment-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+            color: #666;
+        }
+        .copy-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #2ecc71;
+            font-size: 14px;
+            padding: 5px 10px;
+        }
+        .copy-btn:hover {
+            background-color: #27ae60;
+        }
+        .radio-group {
+            display: flex;
+            gap: 15px;
+        }
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .process-btn {
+            align-self: center;
+            padding: 12px 25px;
+            font-size: 18px;
+        }
+        .segment-content {
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Text Splitter</h1>
+    <div class="container">
+        <div class="input-section">
+            <h2>Input Text</h2>
+            <textarea id="inputText" placeholder="Paste your text here..."></textarea>
+            <div class="char-count">Characters: <span id="charCount">0</span></div>
+            
+            <div class="option-section">
+                <div class="radio-group">
+                    <p>Split preference:</p>
+                    <div class="radio-option">
+                        <input type="radio" id="paragraphSplit" name="splitPreference" value="paragraph" checked>
+                        <label for="paragraphSplit">End at paragraph breaks</label>
+                    </div>
+                    <div class="radio-option">
+                        <input type="radio" id="wordSplit" name="splitPreference" value="word">
+                        <label for="wordSplit">End at word boundaries</label>
+                    </div>
+                </div>
+                
+                <div class="char-limit">
+                    <label for="charLimit">Character limit per segment:</label>
+                    <input type="number" id="charLimit" value="2000" min="100" max="10000">
+                </div>
+            </div>
+            
+            <button id="processBtn" class="process-btn">Process Text</button>
+        </div>
+        
+        <div class="output-section">
+            <h2>Output Segments</h2>
+            <div id="segmentsContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const inputText = document.getElementById('inputText');
+            const charCount = document.getElementById('charCount');
+            const charLimit = document.getElementById('charLimit');
+            const paragraphSplit = document.getElementById('paragraphSplit');
+            const processBtn = document.getElementById('processBtn');
+            const segmentsContainer = document.getElementById('segmentsContainer');
+            
+            // Update character count as user types
+            inputText.addEventListener('input', function() {
+                charCount.textContent = inputText.value.length;
+            });
+            
+            // Process text when button is clicked
+            processBtn.addEventListener('click', function() {
+                const text = inputText.value;
+                const limit = parseInt(charLimit.value);
+                const useParagraphBreaks = paragraphSplit.checked;
+                
+                if (!text) {
+                    alert('Please enter some text to process.');
+                    return;
+                }
+                
+                const segments = splitText(text, limit, useParagraphBreaks);
+                displaySegments(segments);
+            });
+            
+            // Function to split text based on user preferences
+            function splitText(text, limit, useParagraphBreaks) {
+                const segments = [];
+                let currentSegment = '';
+                
+                if (useParagraphBreaks) {
+                    // Split by paragraph breaks first
+                    const paragraphs = text.split(/\n\s*\n/);
+                    
+                    for (const paragraph of paragraphs) {
+                        // If adding this paragraph would exceed the limit and we already have content
+                        if (currentSegment.length + paragraph.length + 2 > limit && currentSegment.length > 0) {
+                            segments.push(currentSegment);
+                            currentSegment = paragraph;
+                        } else if (currentSegment.length + paragraph.length + 2 > limit) {
+                            // If the paragraph itself is too long, split it by words
+                            const wordSegments = splitByWords(paragraph, limit);
+                            if (currentSegment.length > 0) {
+                                wordSegments[0] = currentSegment + '\n\n' + wordSegments[0];
+                                segments.push(...wordSegments);
+                                currentSegment = '';
+                            } else {
+                                segments.push(...wordSegments);
+                            }
+                        } else {
+                            // Add paragraph with a separator if not the first paragraph in the segment
+                            if (currentSegment.length > 0) {
+                                currentSegment += '\n\n' + paragraph;
+                            } else {
+                                currentSegment = paragraph;
+                            }
+                        }
+                    }
+                    
+                    // Add the last segment if not empty
+                    if (currentSegment.length > 0) {
+                        segments.push(currentSegment);
+                    }
+                } else {
+                    // Split by word boundaries
+                    segments.push(...splitByWords(text, limit));
+                }
+                
+                return segments;
+            }
+            
+            // Helper function to split text by word boundaries
+            function splitByWords(text, limit) {
+                const segments = [];
+                let currentSegment = '';
+                const words = text.split(/(\s+)/);
+                
+                for (let i = 0; i < words.length; i++) {
+                    const word = words[i];
+                    
+                    // If adding this word would exceed the limit
+                    if (currentSegment.length + word.length > limit) {
+                        if (currentSegment.length > 0) {
+                            segments.push(currentSegment);
+                            currentSegment = word;
+                        } else {
+                            // If a single word is longer than the limit, add it anyway
+                            segments.push(word);
+                            currentSegment = '';
+                        }
+                    } else {
+                        currentSegment += word;
+                    }
+                }
+                
+                // Add the last segment if not empty
+                if (currentSegment.length > 0) {
+                    segments.push(currentSegment);
+                }
+                
+                return segments;
+            }
+            
+            // Function to display segments in the UI
+            function displaySegments(segments) {
+                segmentsContainer.innerHTML = '';
+                
+                segments.forEach((segment, index) => {
+                    const segmentDiv = document.createElement('div');
+                    segmentDiv.className = 'segment';
+                    
+                    const headerDiv = document.createElement('div');
+                    headerDiv.className = 'segment-header';
+                    headerDiv.innerHTML = `
+                        <span>Segment ${index + 1} of ${segments.length}</span>
+                        <span>${segment.length} characters</span>
+                    `;
+                    
+                    const contentDiv = document.createElement('div');
+                    contentDiv.className = 'segment-content';
+                    contentDiv.textContent = segment;
+                    
+                    const copyBtn = document.createElement('button');
+                    copyBtn.className = 'copy-btn';
+                    copyBtn.textContent = 'Copy';
+                    copyBtn.addEventListener('click', function() {
+                        copyToClipboard(segment, copyBtn);
+                    });
+                    
+                    segmentDiv.appendChild(headerDiv);
+                    segmentDiv.appendChild(contentDiv);
+                    segmentDiv.appendChild(copyBtn);
+                    
+                    segmentsContainer.appendChild(segmentDiv);
+                });
+            }
+            
+            // Function to copy text to clipboard
+            function copyToClipboard(text, button) {
+                navigator.clipboard.writeText(text).then(() => {
+                    const originalText = button.textContent;
+                    button.textContent = 'Copied!';
+                    button.style.backgroundColor = '#27ae60';
+                    
+                    setTimeout(() => {
+                        button.textContent = originalText;
+                        button.style.backgroundColor = '#2ecc71';
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy text: ', err);
+                    button.textContent = 'Failed!';
+                    button.style.backgroundColor = '#e74c3c';
+                    
+                    setTimeout(() => {
+                        button.textContent = 'Copy';
+                        button.style.backgroundColor = '#2ecc71';
+                    }, 2000);
+                });
+            }
+        });
+    </script>
+</body>
+</html>
